@@ -85,7 +85,6 @@ On définit la somme des probabilités implicites :
 S(t) = \sum_{i=1}^{K} p_i(t).
 \end{equation}
 
-Dans un cadre théorique idéal, on devrait avoir $S(t)=1$. En pratique, on introduit un seuil $\varepsilon>0$ afin de tenir compte du bruit de marché, de la granularité du carnet d’ordres et des frictions.
 
 On dira qu’une opportunité théorique de type \textbf{SHORT} est détectée à l’instant $t$ lorsque :
 \begin{equation}
@@ -105,7 +104,6 @@ L’écart $|S(t)-1|$ constitue une mesure de l’ampleur de l’inefficience ob
 En effet, dans un monde parfait, cette somme des "probabilités" devrait valoir 1. Cependant, dans notre cas les tokens YES sont soit surévalués soit sous-évalués : un arbitreur potentiel pourrait détecter cette faille et gagner $|S(t) - 1|$ avec un pari intelligent!
 
 
-\newpage
 
 \section{À haut niveau : le projet}
 
@@ -242,7 +240,6 @@ Les tests (réalisés ultérieurement) permettront de valider que les exigences 
     \item \textbf{TV6 -- Statistiques.} Vérifier la cohérence des agrégations produites (comptages, distributions, comparaison par stratégie).
 \end{itemize}
 
-\newpage
 
 \section{Conception préliminaire}
 Cette section présente la conception préliminaire du système : choix de solution, architecture globale, décomposition fonctionnelle, flux de données, définition des données manipulées et préparation des tests d’intégration.
