@@ -1,0 +1,409 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta, positioning}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{float}
+\usepackage{pgfgantt}
+\usepackage{float}
+\usepackage{tabularx}
+\usepackage{booktabs}
+\usepackage{float}
+\usepackage{hyperref}
+
+
+
+\title{Détection d’opportunités d’arbitrage sur Polymarket}
+\author{Encadrant : Paul Gibbson \\ Etudiant : Paul Graczyk}
+\date{\today}
+
+
+
+\begin{document}
+
+\maketitle
+\newpage
+\tableofcontents
+\newpage
+
+\section{Introduction}
+Polymarket est une plateforme de marchés prédictifs sur laquelle les utilisateurs échangent des parts associées à l’issue d’événements réels (politique, sport, économie, culture). 
+Le prix de ces parts peut être interprété comme une probabilité collective attribuée à la réalisation d’un événement.
+
+\medskip
+
+Contrairement à un marché théoriquement parfait, Polymarket présente certaines inefficiences : pour un même marché, la somme des prix des parts YES et NO n’est pas nécessairement égale à 1. 
+Ces incohérences ouvrent la voie à des opportunités théoriques d’arbitrage, c’est-à-dire des situations où la structure des prix viole des contraintes probabilistes élémentaires.
+
+
+\section{Contexte}
+
+
+\subsection{Structure des marchés}
+
+Les marchés ouverts sur Polymarket peuvent être regroupés en deux grandes catégories : les marchés binaires et les événements multi-issues.
+
+\subsubsection{Marchés binaires}
+
+Un marché binaire ne possède que deux résolutions disjointes, généralement formulées sous la forme d’une question dont la réponse est soit "oui", soit "non" 
+Polymarket associe deux tokens correspondants, notés \textbf{YES} et \textbf{NO}. Un exemple de marché binaire est présenté en Figure~\ref{fig:marche_binaire}.
+\\\\
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.60\textwidth]{marchebinaire2.png}
+\caption{Exemple de marché binaire.}
+\label{fig:marche_binaire}
+\end{figure}
+
+\subsubsection{Événements multi-issues}
+
+Un événement multi-issues correspond à une question comportant plusieurs résolutions disjointes possibles. 
+Pour chacune de ces résolutions, \\Polymarket ouvre un \textbf{marché binaire distinct} avec des tokens \textbf{YES} et \textbf{NO}. Un exemple d’événement multi-issues est présenté en Figure~\ref{fig:event_multi}.
+\\\\
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.60\textwidth]{marche_multi3.png}
+\caption{Exemple d’événement multi-issues.}
+\label{fig:event_multi}
+\end{figure}
+
+
+
+\subsection{Définition d'une opportunité d'arbitrage (théorique)}
+
+Considérons un ensemble d’issues mutuellement exclusives $\{R_1,\dots,R_K\}$ pour un même événement.
+On note $p_i(t)$ un prix observé à l’instant $t$ associé à l’issue $R_i$ (par exemple un prix de carnet choisi de manière cohérente avec l’objectif de détection).
+
+On définit la somme des probabilités implicites :
+\begin{equation}
+S(t) = \sum_{i=1}^{K} p_i(t).
+\end{equation}
+
+Dans un cadre théorique idéal, on devrait avoir $S(t)=1$. En pratique, on introduit un seuil $\varepsilon>0$ afin de tenir compte du bruit de marché, de la granularité du carnet d’ordres et des frictions.
+
+On dira qu’une opportunité théorique de type \textbf{SHORT} est détectée à l’instant $t$ lorsque :
+\begin{equation}
+S(t) > 1 + \varepsilon.
+\end{equation}
+
+On dira qu’une opportunité théorique de type \textbf{LONG} est détectée à l’instant $t$ lorsque :
+\begin{equation}
+S(t) < 1 - \varepsilon.
+\end{equation}
+
+Sinon, si $|S(t)-1|\le \varepsilon$, on considère qu’il n’y a pas de signal (\texttt{NONE}).
+
+L’écart $|S(t)-1|$ constitue une mesure de l’ampleur de l’inefficience observée à l’instant $t$.
+
+
+En effet, dans un monde parfait, cette somme des "probabilités" devrait valoir 1. Cependant, dans notre cas les tokens YES sont soit surévalués soit sous-évalués : un arbitreur potentiel pourrait détecter cette faille et gagner $|S(t) - 1|$ avec un pari intelligent!
+
+
+\newpage
+
+\section{À haut niveau : le projet}
+
+Le projet consiste à développer un prototype de système d’analyse capable de détecter, de manière automatisée et continue, des opportunités théoriques d’arbitrage (au sens d’inefficience probabiliste) sur Polymarket, telles que décrites dans les sections précédentes. Le système est piloté par un module de sélection stratégique des marchés, puis applique un pipeline commun de collecte des prix, calcul de la métrique $S(t)$, détection via seuil, et enregistrement en base de données.
+
+\subsection{Stratégies de sélection des marchés}
+
+Avant d’analyser un grand nombre de marchés de façon exhaustive, il est pertinent de définir des stratégies de sélection ciblant les catégories les plus susceptibles de présenter des opportunités. Une première hypothèse (inspirée de~\cite{ref_paper}) est que certaines thématiques concentrent une part importante des inefficiences observables, notamment les marchés liés à la crypto, au sport et à la politique. Dans ce contexte, le système proposera plusieurs stratégies interchangeables, par exemple :
+
+\smallskip
+
+\begin{itemize}
+    \item \texttt{RunOnCrypto}: sélection et scan continu de marchés rattachés à la thématique crypto ;
+    \item \texttt{RunOnPolitics}: sélection et scan continu de marchés politiques ;
+    \item \texttt{RunOnSports}: sélection et scan continu de marchés sportifs.
+\end{itemize}
+
+\smallskip
+En complément d’une sélection par thématique, une autre intuition consiste à prioriser les marchés présentant une forte activité ou de fortes variations de prix à un instant donné. Polymarket propose notamment une section \emph{Breaking News} mettant en avant des marchés particulièrement dynamiques. Une stratégie \texttt{RunOnTopN} sera donc intégrée afin de sélectionner périodiquement les $N$ marchés mis en avant dans cette section et de les analyser en priorité. On montre un exemple du "Breaking" Figure~\ref{fig:breaking}
+
+Enfin, ces stratégies constituent des points de départ : elles seront comparées empiriquement à l’aide des données enregistrées (fréquence des opportunités, distribution de $|S(t)-1|$, marchés les plus contributifs), afin d’identifier celles offrant le meilleur compromis entre coût de scan et opportunités détectées.
+
+\medskip
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.60\textwidth]{breaking2.png}
+\caption{Un exemple des marchés de Breaking sur Polymarket en février 2026}
+\label{fig:breaking}
+\end{figure}
+\medskip
+
+On remarque par ailleurs, Figure~\ref{fig:breaking} que le Top 1, à savoir "Odds of Khamenei out by March 31 over \_ in February?" s'est résolu positivement au moment de la capture d'écran.
+Pourtant, quelques minutes auparavant, le pourcentage était à 60\% environ : c'est un testament à la volatilité de cette section.
+
+
+\subsection{Pipeline d’analyse (principe général)}
+
+Indépendamment de la stratégie choisie, l’analyse suit un pipeline commun. Pour un marché donné, le système :
+\begin{enumerate}
+    \item récupère les métadonnées nécessaires (identifiants, issues/outcomes, tokens) ;
+    \item récupère les prix observables via le carnet d’ordres ;
+    \item calcule $S(t)$ et l’écart $|S(t)-1|$ ;
+    \item compare cet écart à un seuil $\varepsilon$ (paramétrable) ;
+    \item si une opportunité est détectée, enregistre les informations utiles (horodatage, marché, stratégie, valeur de $S(t)$, écart, type).
+\end{enumerate}
+
+Ce pipeline doit fonctionner aussi bien pour des marchés binaires que pour des événements à plusieurs issues, le point clé étant que $S(t)$ s’adapte au nombre d’issues.
+
+\subsection{Exécution continue et asynchrone}
+
+Pour éviter un fonctionnement strictement séquentiel, l’analyse est organisée de manière concurrente : plusieurs marchés peuvent être évalués simultanément. Concrètement, à chaque cycle d’exécution, la stratégie fournit un lot de marchés, puis le système lance l’analyse de ces marchés en parallèle (asynchronisme). Une fois le cycle terminé, le système attend un intervalle de temps $\Delta t$ puis réitère.
+
+Cette boucle temporelle permet :
+\begin{itemize}
+    \item de maintenir un scan durable dans le temps ;
+    \item de contrôler la fréquence d’échantillonnage via $\Delta t$ ;
+    \item de comparer la réactivité et l’efficacité des différentes stratégies.
+\end{itemize}
+
+\subsection{Enregistrement et analyse a posteriori}
+
+Les opportunités détectées sont sauvegardées dans une base de données (MySQL) afin de conserver un historique exploitable. Cette persistance permet notamment :
+\begin{itemize}
+    \item de retrouver les opportunités détectées (marché, date, type, écart, stratégie) ;
+    \item de calculer des statistiques globales (fréquences, distributions, classements) ;
+    \item de comparer empiriquement les stratégies de sélection (par exemple \texttt{RunOnTopN} vs \texttt{RunOnCrypto}).
+\end{itemize}
+
+\subsection{Objectif expérimental}
+
+L’objectif expérimental du projet est d’exécuter le système de scan selon plusieurs stratégies pendant une période d’environ un mois, puis de comparer les statistiques obtenues (fréquence des opportunités, distribution de $|S(t)-1|$, marchés les plus contributeurs) avec les résultats rapportés en 2024 dans~\cite{ref_paper}. Cette comparaison vise à étudier, au moins partiellement, l’évolution des inefficiences observables sur Polymarket entre 2024 et 2026.
+
+\newpage
+
+\section{Spécification}
+Cette section présente les exigences du système à développer. Le logiciel est un outil d’analyse exécuté de manière périodique, visant à détecter des incohérences probabilistes sur des marchés prédictifs. La détection repose sur la métrique $S(t)$ définie précédemment, et sur l’évaluation de l’écart $|S(t)-1|$ vis-à-vis d’un seuil paramétrable.
+
+\subsection{Fonctions à remplir par le logiciel}
+Les fonctions attendues sont les suivantes :
+
+\begin{itemize}
+    \item \textbf{F1 -- Sélection des marchés (stratégies).} Permettre le choix d’une stratégie de sélection de marchés (ex. top-N tendances, catégories spécifiques, multi-issues), avec paramètres configurables.
+    \item \textbf{F2 -- Collecte des données de marché.} Récupérer pour chaque marché les informations nécessaires à l’analyse : identifiants, issues (outcomes), et prix utiles issus du carnet d’ordres.
+    \item \textbf{F3 -- Calcul de la métrique.} Calculer $S(t)$ pour chaque marché analysé à l’instant $t$.
+    \item \textbf{F4 -- Détection d’opportunités.} Détecter une opportunité lorsque $|S(t)-1|$ dépasse un seuil $\varepsilon$ (paramétrable), et classifier le résultat (par exemple : \texttt{LONG}, \texttt{SHORT}, \texttt{NONE}).
+    \item \textbf{F5 -- Exécution continue et périodique.} Réitérer l’analyse en continu selon une période $\Delta t$ (paramétrable).
+    \item \textbf{F6 -- Orchestration asynchrone.} Analyser plusieurs marchés en concurrence (asynchronisme), afin d’améliorer le débit de scan.
+    \item \textbf{F7 -- Persistance.} Enregistrer en base de données les opportunités détectées et les informations nécessaires à leur traçabilité (horodatage, marché, stratégie, seuil, valeur de $S(t)$, etc.).
+    \item \textbf{F8 -- Statistiques a posteriori.} Produire des statistiques à partir des données enregistrées (fréquence des opportunités, distribution des écarts, comparaison par stratégie, etc.).
+\end{itemize}
+
+\subsection{Performances requises}
+Les performances sont définies au niveau système (objectif : scan régulier, stable et exploitable).
+
+\begin{itemize}
+    \item \textbf{P1 -- Périodicité respectée.} Le temps de traitement d’un cycle (sélection + collecte + détection + persistance) doit rester compatible avec la période $\Delta t$ choisie.
+    \item \textbf{P2 -- Passage à l’échelle.} Le système doit pouvoir analyser un lot de marchés (ex. top-N) sans dégradation bloquante, grâce à l’exécution asynchrone.
+    \item \textbf{P3 -- Tolérance aux aléas.} Le système doit continuer à fonctionner malgré des erreurs ponctuelles (API, timeouts, marchés fermés), sans arrêt global.
+\end{itemize}
+
+\subsection{Contraintes de réalisation}
+\begin{itemize}
+    \item \textbf{C1 -- Technologies.} Développement en Python. Persistance via MySQL.
+    \item \textbf{C2 -- Paramétrage.} Les paramètres suivants doivent être configurables (CLI ou fichier de configuration) : stratégie, $N$ (si top-N), $\Delta t$, seuil $\varepsilon$, et éventuellement filtres de marché.
+    \item \textbf{C3 -- Dépendances externes.} Le système dépend d’interfaces de données pour (i) l’obtention des marchés à analyser et (ii) la récupération de prix.
+    \item \textbf{C4 -- Versionnement.} Le projet est suivi via un dépôt Git, accessible à l’encadrant.
+\end{itemize}
+
+\subsection{Exigences de qualité}
+\begin{itemize}
+    \item \textbf{Q1 -- Modularité.} Séparation claire des responsabilités : sélection (stratégies), collecte, détection, persistance, statistiques.
+    \item \textbf{Q2 -- Maintenabilité.} Code lisible, documenté, et structuré pour faciliter l’ajout de nouvelles stratégies ou métriques.
+    \item \textbf{Q3 -- Observabilité.} Journalisation (logs) des événements clés : cycle, erreurs, opportunités détectées, statistiques d’exécution.
+    \item \textbf{Q4 -- Testabilité.} Les composants critiques (calcul de $S(t)$, application du seuil, écriture en base, agrégations statistiques) doivent être testables indépendamment.
+    \item \textbf{Q5 -- Traçabilité.} Chaque opportunité enregistrée doit conserver l’horodatage et les paramètres utilisés (stratégie, $\Delta t$, $\varepsilon$) afin de permettre une analyse a posteriori.
+\end{itemize}
+
+\subsection{Interfaces du logiciel}
+\begin{itemize}
+    \item \textbf{I1 -- Interface de pilotage.} Exécution via ligne de commande (ou configuration) permettant de choisir la stratégie et ses paramètres.
+    \item \textbf{I2 -- Interfaces de données.} Modules d’accès aux données de marché (sélection des marchés / récupération des prix).
+    \item \textbf{I3 -- Interface base de données.} Module d’accès MySQL pour insérer et requêter opportunités / statistiques.
+\end{itemize}
+
+\subsection{Préparation des tests de validation}
+Les tests (réalisés ultérieurement) permettront de valider que les exigences sont respectées :
+
+\begin{itemize}
+    \item \textbf{TV1 -- Calcul.} Vérifier que le calcul de $S(t)$ est correct sur des cas contrôlés (binaire et multi-issues).
+    \item \textbf{TV2 -- Seuil et classification.} Vérifier la détection lorsque $|S(t)-1|>\varepsilon$ et la classification attendue (\texttt{LONG}/\texttt{SHORT}/\texttt{NONE}).
+    \item \textbf{TV3 -- Boucle $\Delta t$.} Vérifier que la réitération périodique est respectée sur une exécution prolongée.
+    \item \textbf{TV4 -- Asynchronisme.} Vérifier l’analyse concurrente d’un lot de marchés (absence de blocage global, gestion des timeouts).
+    \item \textbf{TV5 -- Persistance.} Vérifier que les enregistrements en base contiennent toutes les informations nécessaires (horodatage, paramètres, métrique).
+    \item \textbf{TV6 -- Statistiques.} Vérifier la cohérence des agrégations produites (comptages, distributions, comparaison par stratégie).
+\end{itemize}
+
+\newpage
+
+\section{Conception préliminaire}
+Cette section présente la conception préliminaire du système : choix de solution, architecture globale, décomposition fonctionnelle, flux de données, définition des données manipulées et préparation des tests d’intégration.
+
+\subsection{Choix de la solution}
+Le système est conçu comme une application d’analyse exécutée en continu, pilotée par une stratégie de sélection de marchés. Les principaux choix techniques sont les suivants :
+\begin{itemize}
+    \item \textbf{Langage :} Python, notamment pour la rapidité de prototypage et l’écosystème (réseau, asynchronisme, accès base de données).
+    \item \textbf{Concurrence :} \texttt{asyncio} afin de permettre l’analyse simultanée de plusieurs marchés et d’améliorer le débit de collecte.
+    \item \textbf{Persistance :} MySQL pour stocker les opportunités détectées et permettre des analyses statistiques a posteriori.
+    \item \textbf{Sources de données :} une API de métadonnées (sélection/identifiants des marchés) et une API de carnet d’ordres pour récupérer les prix.
+\end{itemize}
+
+\subsection{Architecture générale}
+La figure~\ref{fig:archi} présente l’architecture globale du système, centrée sur un moteur d’analyse exécuté périodiquement, et piloté par un module de stratégie.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\textwidth]{PolymarketS(t).pdf}
+\caption{Architecture générale suivant une certaine stratégie}
+\label{fig:archi}
+\end{figure}
+
+\subsection{Définition descendante de la structure du logiciel}
+La structure du logiciel est définie de manière descendante (top-down) :
+\begin{enumerate}
+    \item \textbf{Niveau 0 :} un \emph{moteur d’analyse} exécuté en continu (boucle temporelle de période $\Delta t$).
+    \item \textbf{Niveau 1 :} deux sous-systèmes principaux :
+    \begin{itemize}
+        \item \textbf{Pilotage} : sélection des marchés via une stratégie.
+        \item \textbf{Analyse} : collecte des prix, calcul de métriques, détection, persistance.
+    \end{itemize}
+    \item \textbf{Niveau 2 :} modules détaillés (décrits ci-dessous).
+\end{enumerate}
+
+\subsection{Fonctions nominales et flux de données}
+\subsubsection{Modules (fonctions nominales)}
+Les modules principaux sont :
+\begin{itemize}
+    \item \textbf{Stratège (sélection)} : définit un ensemble de marchés à analyser (ex. top-N, marchés volatils, sports, multi-issues). La stratégie est paramétrable.
+    \item \textbf{Orchestrateur} : planifie l’exécution périodique et lance l’analyse de plusieurs marchés de manière concurrente (asynchrone).
+    \item \textbf{Collecteur de données} : récupère les informations nécessaires (identifiants, tokens, prix, état du marché) via les API.
+    \item \textbf{Détecteur} : calcule la métrique de cohérence et décide si une opportunité est détectée (LONG/SHORT/NONE).
+    \item \textbf{Persistance (MySQL)} : enregistre les opportunités et (optionnellement) les snapshots de prix.
+    \item \textbf{Module statistique} : calcule des indicateurs à partir de la base (fréquences, distributions, comparaison entre stratégies).
+\end{itemize}
+
+\subsubsection{Flux de données (scénario nominal)}
+Le scénario nominal d’un cycle d’exécution est :
+\begin{enumerate}
+    \item La stratégie sélectionne un ensemble de marchés à analyser (liste d’identifiants).
+    \item L’orchestrateur lance la collecte pour chaque marché (en parallèle via tâches asynchrones).
+    \item Le collecteur récupère pour chaque marché les prix utiles (par exemple best bid/ask sur YES/NO, ou l’ensemble des issues pour un événement multi-issues).
+    \item Le détecteur calcule une métrique et applique un seuil pour classer le résultat :
+    \begin{itemize}
+        \item opportunité \texttt{LONG} si sous-évaluation détectée ;
+        \item opportunité \texttt{SHORT} si sur-évaluation détectée ;
+        \item sinon \texttt{NONE}.
+    \end{itemize}
+    \item Si une opportunité est détectée, elle est enregistrée en base de données (avec horodatage et paramètres).
+    \item Le système attend $\Delta t$ puis réitère sur la même sélection (ou une sélection recalculée selon la stratégie).
+\end{enumerate}
+
+\subsection{Définition des données (signification, type, domaine)}
+Les principales données manipulées par le système sont :
+
+\begin{itemize}
+    \item \textbf{Identifiants de marché / événement :} identifiant unique (\texttt{string}).
+    \item \textbf{Issues (outcomes) :} liste d’issues pour un événement multi-issues (\texttt{list} de \texttt{string} / \texttt{token\_id}).
+    \item \textbf{Prix :} valeurs numériques réelles dans $[0,1]$ (\texttt{float}) issues du carnet d’ordres (achat/vente).
+    \item \textbf{Horodatage :} date/heure de collecte (\texttt{datetime}).
+    \item \textbf{Paramètres d’exécution :} stratégie utilisée (\texttt{string}), seuil (\texttt{float}), période $\Delta t$ (\texttt{float} ou \texttt{int}).
+    \item \textbf{Métrique d’inefficience :} valeur calculée à partir des prix (ex. somme/écart), (\texttt{float}).
+    \item \textbf{Résultat :} type de détection \texttt{LONG}, \texttt{SHORT}, \texttt{NONE} (\texttt{enum} ou \texttt{string}).
+\end{itemize}
+
+\subsection{Persistance (niveau préliminaire)}
+La base de données doit permettre :
+\begin{itemize}
+    \item d’historiser les opportunités détectées (marché, horodatage, métrique, type, stratégie) ;
+    \item de permettre des requêtes statistiques (fréquence par marché, par stratégie, distribution des écarts).
+\end{itemize}
+Une première modélisation simple peut reposer sur les entités \emph{Market}, \emph{Opportunity} et (optionnellement) \emph{PriceSnapshot}.
+
+\subsection{Préparation des tests d’intégration}
+Les tests d’intégration (préparés à ce stade) viseront à vérifier l’interopérabilité des modules :
+\begin{itemize}
+    \item \textbf{TI1 -- Pipeline complet} : stratégie $\rightarrow$ collecte $\rightarrow$ détection $\rightarrow$ insertion en base.
+    \item \textbf{TI2 -- Asynchronisme} : analyse concurrente d’un lot de marchés (absence de blocage global, respect des timeouts).
+    \item \textbf{TI3 -- Robustesse API} : comportement attendu en cas d’erreur réseau (retry/backoff, logs, poursuite du scan).
+    \item \textbf{TI4 -- Persistance} : vérification que les champs attendus sont bien insérés (horodatage, stratégie, seuil, métrique).
+    \item \textbf{TI5 -- Statistiques} : cohérence des agrégations produites à partir des données stockées (comptages, distributions, comparaisons par stratégie).
+\end{itemize}
+
+\newpage
+
+\section{Plan de charge}
+
+
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{@{}l c X@{}}
+\toprule
+\textbf{Activité} & \textbf{Charge (\%)} & \textbf{Contenu} \\
+\midrule
+Spécification \& cadrage & 15\% &
+Rédaction du livrable 1, clarification du périmètre, définition des exigences et des interfaces. \\
+\addlinespace
+
+Conception (préliminaire \& détaillée) & 15\% &
+Architecture globale, décomposition en modules, conception des stratégies, schéma de données (DB). \\
+\addlinespace
+
+Développement & 45\% &
+Implémentation des modules (stratégies, collecte, calcul de $S(t)$, détection, orchestration asynchrone), persistance MySQL, module statistique. \\
+\addlinespace
+
+Tests \& validation & 15\% &
+Tests unitaires (calculs, seuils), tests d'intégration (pipeline complet), robustesse (timeouts, erreurs API), validation sur des lots de marchés. \\
+\addlinespace
+
+Documentation \& restitution & 10\% &
+Rédaction du rapport final, préparation de la soutenance, mise en forme des résultats et figures. \\
+\bottomrule
+\end{tabularx}
+\caption{Plan de charge prévisionnel (projet solo).}
+\label{tab:charge}
+\end{table}
+
+
+\newpage 
+
+\section{Sources}
+
+\begingroup
+\renewcommand{\section}[2]{}%
+
+\begin{thebibliography}{9}
+
+\bibitem{ref_paper}
+Oriol Saguillo, Vahid Ghafouri, Lucianna Kiffer, Guillermo Suarez-Tangil,
+\textit{Unravelling the Probabilistic Forest: Arbitrage in Prediction Markets},
+arXiv:2508.03474, 2025. DOI: 10.48550/arXiv.2508.03474.\\
+\url{https://arxiv.org/abs/2508.03474} \\
+(PDF : \url{https://arxiv.org/pdf/2508.03474})
+
+\bibitem{ref_polymarket}
+Polymarket, \textit{Polymarket (site officiel)}.\\
+\url{https://polymarket.com/}
+
+\bibitem{ref_gamma}
+Polymarket Documentation, \textit{Gamma Markets API — Overview}.\\
+\url{https://docs.polymarket.com/developers/gamma-markets-api/overview}
+
+\bibitem{ref_clob}
+Polymarket Documentation, \textit{CLOB API — Introduction}.\\
+\url{https://docs.polymarket.com/developers/CLOB/introduction}
+
+\end{thebibliography}
+\endgroup
+
+
+
+\end{document}

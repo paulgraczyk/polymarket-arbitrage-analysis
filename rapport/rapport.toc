@@ -1,0 +1,32 @@
+\babel@toc {french}{}\relax 
+\contentsline {section}{\numberline {1}Introduction}{3}{section.1}%
+\contentsline {section}{\numberline {2}Contexte}{3}{section.2}%
+\contentsline {subsection}{\numberline {2.1}Structure des marchés}{3}{subsection.2.1}%
+\contentsline {subsubsection}{\numberline {2.1.1}Marchés binaires}{3}{subsubsection.2.1.1}%
+\contentsline {subsubsection}{\numberline {2.1.2}Événements multi-issues}{3}{subsubsection.2.1.2}%
+\contentsline {subsection}{\numberline {2.2}Définition d'une opportunité d'arbitrage (théorique)}{4}{subsection.2.2}%
+\contentsline {section}{\numberline {3}À haut niveau : le projet}{6}{section.3}%
+\contentsline {subsection}{\numberline {3.1}Stratégies de sélection des marchés}{6}{subsection.3.1}%
+\contentsline {subsection}{\numberline {3.2}Pipeline d’analyse (principe général)}{7}{subsection.3.2}%
+\contentsline {subsection}{\numberline {3.3}Exécution continue et asynchrone}{8}{subsection.3.3}%
+\contentsline {subsection}{\numberline {3.4}Enregistrement et analyse a posteriori}{8}{subsection.3.4}%
+\contentsline {subsection}{\numberline {3.5}Objectif expérimental}{8}{subsection.3.5}%
+\contentsline {section}{\numberline {4}Spécification}{9}{section.4}%
+\contentsline {subsection}{\numberline {4.1}Fonctions à remplir par le logiciel}{9}{subsection.4.1}%
+\contentsline {subsection}{\numberline {4.2}Performances requises}{9}{subsection.4.2}%
+\contentsline {subsection}{\numberline {4.3}Contraintes de réalisation}{10}{subsection.4.3}%
+\contentsline {subsection}{\numberline {4.4}Exigences de qualité}{10}{subsection.4.4}%
+\contentsline {subsection}{\numberline {4.5}Interfaces du logiciel}{10}{subsection.4.5}%
+\contentsline {subsection}{\numberline {4.6}Préparation des tests de validation}{10}{subsection.4.6}%
+\contentsline {section}{\numberline {5}Conception préliminaire}{12}{section.5}%
+\contentsline {subsection}{\numberline {5.1}Choix de la solution}{12}{subsection.5.1}%
+\contentsline {subsection}{\numberline {5.2}Architecture générale}{12}{subsection.5.2}%
+\contentsline {subsection}{\numberline {5.3}Définition descendante de la structure du logiciel}{13}{subsection.5.3}%
+\contentsline {subsection}{\numberline {5.4}Fonctions nominales et flux de données}{14}{subsection.5.4}%
+\contentsline {subsubsection}{\numberline {5.4.1}Modules (fonctions nominales)}{14}{subsubsection.5.4.1}%
+\contentsline {subsubsection}{\numberline {5.4.2}Flux de données (scénario nominal)}{14}{subsubsection.5.4.2}%
+\contentsline {subsection}{\numberline {5.5}Définition des données (signification, type, domaine)}{15}{subsection.5.5}%
+\contentsline {subsection}{\numberline {5.6}Persistance (niveau préliminaire)}{15}{subsection.5.6}%
+\contentsline {subsection}{\numberline {5.7}Préparation des tests d’intégration}{15}{subsection.5.7}%
+\contentsline {section}{\numberline {6}Plan de charge}{16}{section.6}%
+\contentsline {section}{\numberline {7}Sources}{17}{section.7}%
